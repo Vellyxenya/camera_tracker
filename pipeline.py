@@ -33,7 +33,8 @@ def extract_characters(input_image, verbose=False):
         for j in range(len(centers)):
             if j == i:
                 continue
-            if boundRect[i][2] < 10 or boundRect[i][3] < 10 or (radius[i] < radius[j] and cv.pointPolygonTest(contours_poly[j], centers[i], True) > 0):  # point is inside
+            if boundRect[i][2] < 10 or boundRect[i][3] < 10 or \
+                    (radius[i] < radius[j] and cv.pointPolygonTest(contours_poly[j], centers[i], True) > 0):  # point is inside
                 invalid_indices.append(i)
 
     # Only select the valid bounding boxes
@@ -78,7 +79,7 @@ def extract_characters(input_image, verbose=False):
         dist = compute_distance(final_bounding_boxes[-1], bb_)
         if dist > 200:  # If distance is large, we have a white space
             final_bounding_boxes.append(None)
-        if dist > 60:  # If distance is not too small we have a new character
+        if dist > 55:  # If distance is not too small we have a new character
             final_bounding_boxes.append(bb_)
 
     drawing = np.zeros((canny_output.shape[0], canny_output.shape[1], 3), dtype=np.uint8)
@@ -100,18 +101,20 @@ def extract_characters(input_image, verbose=False):
     return final_bounding_boxes
 
 
-def template_matching(input_character, templates):
+def template_matching(input_character, templates, names):
     """
-    Given a character, look for corresponding template id by performing template-matching
+    Given a character, look for corresponding template id using template-matching
     :param input_character: the character to match
     :return: id of matching template
     """
-    max_matching = 0
+    max_matching = 10000
     arg_i = -1
+
     for i, template_ in enumerate(templates):
-        res = cv.matchTemplate(input_character, template_, cv.TM_CCOEFF_NORMED).flatten()  # TODO Might need to change the matching algo b/c confuses 1 and 4
-        res = max(res)  # Select the best matching
-        if res > max_matching:
+        name = names[i]
+        res = cv.matchTemplate(input_character, template_, cv.TM_SQDIFF_NORMED).flatten()  # TODO Might need to change the matching algo b/c confuses 1 and 4
+        res = min(res)  # Select the best matching
+        if res < max_matching:
             arg_i = i
             max_matching = res
     return arg_i
@@ -176,14 +179,14 @@ def decode(input_image, verbose=False):
         # Add spaces on the left and the right to ensure the image is always wider than the template
         height, width = character.shape
 
-        background = np.zeros((120, ww))
+        background = np.ones((120, ww)) * 255
         ww = 240
         if height == 0 or width == 0 or width > ww:
             continue  # TODO but this should not happen..
 
         background[:, ww//2 - width // 2: ww//2 - width // 2 + width] = character
         # Perform template matching
-        template_id = template_matching(character, templates)
+        template_id = template_matching(character, templates, template_names)
         # Add the decoded character to the final string
         decoded += dico.get(template_names[template_id], template_names[template_id])
 
