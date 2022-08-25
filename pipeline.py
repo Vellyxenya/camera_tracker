@@ -2,8 +2,11 @@ import os
 import cv2 as cv
 import numpy as np
 
+import random as rng
+rng.seed(12345)
 
-def extract_characters(input_image):
+
+def extract_characters(input_image, verbose=False):
     """
     Given an input image, extract the contained characters from top-to-bottom, left-to-right
     :param input_image: input image as a numpy array. Must contain only one channel
@@ -30,7 +33,7 @@ def extract_characters(input_image):
         for j in range(len(centers)):
             if j == i:
                 continue
-            if radius[i] < radius[j] and cv.pointPolygonTest(contours_poly[j], centers[i], True) > 0:  # point is inside
+            if boundRect[i][2] < 10 or boundRect[i][3] < 10 or (radius[i] < radius[j] and cv.pointPolygonTest(contours_poly[j], centers[i], True) > 0):  # point is inside
                 invalid_indices.append(i)
 
     # Only select the valid bounding boxes
@@ -62,7 +65,12 @@ def extract_characters(input_image):
         v2 = np.array([bb2[0], bb2[1]])
         return np.linalg.norm(v1 - v2)
 
+    if verbose:
+        print(len(bounding_boxes))
+
     # Initialize final bounding box list
+    if len(bounding_boxes) < 2:
+        return [None]
     final_bounding_boxes = [bounding_boxes[0]]
 
     # Ignore bounding boxes that are close to the previous ones
@@ -70,13 +78,29 @@ def extract_characters(input_image):
         dist = compute_distance(final_bounding_boxes[-1], bb_)
         if dist > 200:  # If distance is large, we have a white space
             final_bounding_boxes.append(None)
-        if dist > 20:  # If distance is not too small we have a new character
+        if dist > 60:  # If distance is not too small we have a new character
             final_bounding_boxes.append(bb_)
+
+    drawing = np.zeros((canny_output.shape[0], canny_output.shape[1], 3), dtype=np.uint8)
+
+    for i in range(len(final_bounding_boxes)):
+        if final_bounding_boxes[i] is None:
+            continue
+        color = (rng.randint(0, 256), rng.randint(0, 256), rng.randint(0, 256))
+        # cv.drawContours(drawing, contours_poly, i, color)
+        cv.rectangle(drawing, (int(final_bounding_boxes[i][0]), int(final_bounding_boxes[i][1])), \
+                     (int(final_bounding_boxes[i][0] + final_bounding_boxes[i][2]), int(final_bounding_boxes[i][1] + final_bounding_boxes[i][3])), color, 2)
+        # cv.circle(drawing, (int(centers[i][0]), int(centers[i][1])), int(radius[i]), color, 2)
+
+    if verbose:
+        cv.imshow('Contours', drawing)
+        cv.imshow('input', input_image)
+        cv.waitKey(0)
 
     return final_bounding_boxes
 
 
-def template_matching(input_character):
+def template_matching(input_character, templates):
     """
     Given a character, look for corresponding template id by performing template-matching
     :param input_character: the character to match
@@ -85,7 +109,7 @@ def template_matching(input_character):
     max_matching = 0
     arg_i = -1
     for i, template_ in enumerate(templates):
-        res = cv.matchTemplate(input_character, template_, cv.TM_CCOEFF_NORMED).flatten()
+        res = cv.matchTemplate(input_character, template_, cv.TM_CCOEFF_NORMED).flatten()  # TODO Might need to change the matching algo b/c confuses 1 and 4
         res = max(res)  # Select the best matching
         if res > max_matching:
             arg_i = i
@@ -93,9 +117,15 @@ def template_matching(input_character):
     return arg_i
 
 
-if __name__ == '__main__':
+def decode(input_image, verbose=False):
+    """
+
+    :param input_image:
+    :param verbose:
+    :return:
+    """
     # Read input image
-    img = cv.imread('img.jpg', 0)
+    img = input_image
 
     # Preprocess the image
     kernel = cv.getStructuringElement(cv.MORPH_CROSS, (3, 3))
@@ -123,7 +153,7 @@ if __name__ == '__main__':
     }
 
     # Character extraction phase
-    bbs = extract_characters(src_gray)
+    bbs = extract_characters(src_gray, verbose=verbose)
 
     # Matching phase
     decoded = ''
@@ -133,22 +163,40 @@ if __name__ == '__main__':
             continue
         x, y, w, h = bb
         # Extract the character from image before preprocessing
-        character = img[y:y+h, x:x+w]
+        character = img[y:y + h, x:x + w]
         # Resize the image
         height, width = character.shape
+        ww = 600
+        if height == 0 or width == 0 or width > ww:
+            continue  # TODO but this should not happen..
         scale_factor = 120.0 / height
+
         character = cv.resize(character, (int(scale_factor * width), 120))
+
         # Add spaces on the left and the right to ensure the image is always wider than the template
         height, width = character.shape
-        background = np.zeros((120, 240))
-        background[:, 120 - width//2: 120 - width//2 + width] = character
+
+        background = np.zeros((120, ww))
+        ww = 240
+        if height == 0 or width == 0 or width > ww:
+            continue  # TODO but this should not happen..
+
+        background[:, ww//2 - width // 2: ww//2 - width // 2 + width] = character
         # Perform template matching
-        template_id = template_matching(character)
+        template_id = template_matching(character, templates)
         # Add the decoded character to the final string
         decoded += dico.get(template_names[template_id], template_names[template_id])
 
-    print('Decoded:\n')
-    print(decoded)
+    if verbose:
+        print('Decoded:\n')
+        print(decoded)
+
+    return decoded
+
+
+if __name__ == '__main__':
+    image = cv.imread('new.png', 0)
+    decode(image, verbose=True)
 
 
 
