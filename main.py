@@ -1,6 +1,6 @@
 import cv2
 import sys
-from pipeline import decode
+from decoding import decode
 from datetime import datetime
 import pickle
 
@@ -29,6 +29,9 @@ if not ret:
     sys.exit('Could not set autofocus!')
 cap.set(cv2.CAP_PROP_FOCUS, 150.0)
 
+do_binarizing = False
+init_loop = True
+
 # Create the sliders
 cv2.namedWindow('video', cv2.WINDOW_GUI_NORMAL)
 cv2.createTrackbar('x_min', 'video', 121, 100, do_nothing)
@@ -45,9 +48,6 @@ A_list = []
 Ah_list = []
 
 start = datetime.now()
-
-do_binarizing = False
-init_loop = True
 
 while True:
     ret, frame = cap.read()
@@ -67,26 +67,27 @@ while True:
     if do_binarizing:
         ret, gray = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # Decode
+    # Invert black/white
     inverted = cv2.bitwise_not(gray)
 
+    # Resize the image to have sth that is well-suited for parameter-tweaking
     height, width = inverted.shape
     scale_factor = 1200.0 / width
     inverted = cv2.resize(inverted, (1200, int(scale_factor * height)))
 
+    # Decode the image
     decoded, inverted_with_bb = decode(inverted, dilations=dilations)
-
     decoded = decoded.split('\n')
     print(decoded)
 
+    # Initialize times
     now = datetime.now()
     dt = now - start
-
     times.append(dt.total_seconds())
     A_list.append(None)
     Ah_list.append(None)
 
-    if len(decoded) == 4:  # Correctly formatted
+    if len(decoded) == 4:  # If correctly formatted
         A = decoded[0]
         Ah = decoded[2]
         if len(A) > 0 and A[-1] == 'A':
@@ -106,9 +107,11 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+# Free resources
 cap.release()
 cv2.destroyAllWindows()
 
+# Write the gathered data to disk
 with open('times.pkl', 'wb') as f:
     pickle.dump(times, f)
 with open('a_list.pkl', 'wb') as f:
