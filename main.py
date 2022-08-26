@@ -1,46 +1,54 @@
-import time
-
 import cv2
 import sys
 from pipeline import decode
-
-# template_0 = cv2.imread('0.png', cv2.IMREAD_GRAYSCALE)
-# element = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-# template_0_dilated = cv2.dilate(template_0, element, iterations=2)
-# cv2.imshow('templ', template_0_dilated)
-# cv2.waitKey(0)
-# sys.exit(0)
+from datetime import datetime
+import pickle
 
 
 def do_nothing(*args):
     pass
 
 
-do_binarizing = False
+def update_dilations(v):
+    global dilations
+    dilations = v
+
+
 def flip_binarizing(v):
     global do_binarizing
     do_binarizing = bool(v)
 
 
+# Hyper parameters
+dilations = 4
+
+# Initialize video capture
 cap = cv2.VideoCapture(0)
 ret = cap.set(cv2.CAP_PROP_AUTOFOCUS, 0.0)
-# if not ret:
-#     sys.exit('Could not set autofocus!')
-
+if not ret:
+    sys.exit('Could not set autofocus!')
 cap.set(cv2.CAP_PROP_FOCUS, 150.0)
 
+# Create the sliders
 cv2.namedWindow('video', cv2.WINDOW_GUI_NORMAL)
-cv2.createTrackbar('x_min', 'video', 123, 100, do_nothing)
+cv2.createTrackbar('x_min', 'video', 121, 100, do_nothing)
 cv2.createTrackbar('x_max', 'video', 169, 100, do_nothing)
-cv2.createTrackbar('y_min', 'video', 179, 100, do_nothing)
-cv2.createTrackbar('y_max', 'video', 17, 100, do_nothing)
+cv2.createTrackbar('y_min', 'video', 256, 100, do_nothing)
+cv2.createTrackbar('y_max', 'video', 97, 100, do_nothing)
 cv2.createTrackbar('focus', 'video', 250, 250, lambda v: cap.set(cv2.CAP_PROP_FOCUS, v))
 cv2.createTrackbar('binarize', 'video', 1, 1, flip_binarizing)
+cv2.createTrackbar('dilations', 'video', dilations, 7, update_dilations)
 
+# Initialize arrays to store measurements
+times = []
 A_list = []
 Ah_list = []
 
+start = datetime.now()
+
+do_binarizing = False
 init_loop = True
+
 while True:
     ret, frame = cap.read()
     if init_loop:
@@ -66,40 +74,44 @@ while True:
     scale_factor = 1200.0 / width
     inverted = cv2.resize(inverted, (1200, int(scale_factor * height)))
 
-    decoded = decode(inverted)
+    decoded, inverted_with_bb = decode(inverted, dilations=dilations)
 
     decoded = decoded.split('\n')
     print(decoded)
-    print('---------------')
+
+    now = datetime.now()
+    dt = now - start
+
+    times.append(dt.total_seconds())
+    A_list.append(None)
+    Ah_list.append(None)
 
     if len(decoded) == 4:  # Correctly formatted
         A = decoded[0]
         Ah = decoded[2]
-        if A[-1] == 'A':
+        if len(A) > 0 and A[-1] == 'A':
             try:
                 A = float(A[:-1])
-                A_list.append(A)
+                A_list[-1] = A
             except ValueError:
-                print(f'A is not a float, it is: {A}')
-
+                print(f'A={A} is not a float')
         if Ah.endswith('Ah'):
             try:
                 Ah = float(Ah[:-2])
-                Ah_list.append(Ah)
+                Ah_list[-1] = Ah
             except ValueError:
-                print(f'Ah is not a float, it is: {Ah}')
+                print(f'Ah={Ah} is not a float')
 
-    print(len(Ah_list))
-    if len(Ah_list) == 30:
-        break
-
-    cv2.imshow('video', inverted)
+    cv2.imshow('video', inverted_with_bb)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
 cv2.destroyAllWindows()
 
-print(A_list)
-print()
-print(Ah_list)
+with open('times.pkl', 'wb') as f:
+    pickle.dump(times, f)
+with open('a_list.pkl', 'wb') as f:
+    pickle.dump(A_list, f)
+with open('ah_list.pkl', 'wb') as f:
+    pickle.dump(Ah_list, f)
