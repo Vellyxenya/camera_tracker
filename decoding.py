@@ -6,8 +6,8 @@ import random as rng
 rng.seed(0)
 
 
-new_character_distance = 60  # TODO automatically infer this value or something, as it is way too sensitive
-white_space_distance = 200  # TODO possibly also parametrize this value
+new_character_distance = 60
+white_space_distance = 200
 
 
 def extract_characters(input_image, draw_on, verbose=False):
