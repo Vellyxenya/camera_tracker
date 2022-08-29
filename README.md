@@ -1,4 +1,4 @@
-# Digit-board tracker
+# 5x7 LCD Tracker
 
 Scripts to track and analyze measurements from a 5x7 lcd display
 
