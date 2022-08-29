@@ -3,13 +3,19 @@ import cv2 as cv
 import numpy as np
 
 import random as rng
-rng.seed(12345)
+rng.seed(0)
+
+
+new_character_distance = 60  # TODO automatically infer this value or something, as it is way too sensitive
+white_space_distance = 200  # TODO possibly also parametrize this value
 
 
 def extract_characters(input_image, draw_on, verbose=False):
     """
     Given an input image, extract the contained characters from top-to-bottom, left-to-right
     :param input_image: input image as a numpy array. Must contain only one channel
+    :param draw_on: The image to draw the bounding boxes on
+    :param verbose: If True, visualize the bounding boxes
     :return: Tuple of: 1) sorted bounding boxes for each character (white spaces encoded as Nones)
                        2) the input images with bounding boxes drawn on it
     """
@@ -66,9 +72,9 @@ def extract_characters(input_image, draw_on, verbose=False):
     # Ignore bounding boxes that are close to the previous ones
     for bb_ in bounding_boxes[1:]:
         dist = abs(final_bounding_boxes[-1][0] - bb_[0])
-        if dist > 200:  # If distance is large, we have a white space
+        if dist > white_space_distance:  # If distance is large, we have a white space
             final_bounding_boxes.append(None)
-        if dist > 60:  # If distance is not too small we have a new character
+        if dist > new_character_distance:  # If distance is not too small we have a new character
             final_bounding_boxes.append(bb_)
 
     # Draw the bounding boxes on the image
@@ -97,7 +103,6 @@ def template_matching(input_character, templates):
     """
     min_matching = 10000
     arg_i = -1
-
     for i, template_ in enumerate(templates):
         res = cv.matchTemplate(input_character, template_, cv.TM_SQDIFF_NORMED).flatten()
         res = min(res)  # Select the best matching
@@ -186,6 +191,3 @@ def decode(img, dilations, verbose=False):
 if __name__ == '__main__':
     image = cv.imread('img.jpg', 0)
     decode(image, dilations=4, verbose=True)
-
-
-

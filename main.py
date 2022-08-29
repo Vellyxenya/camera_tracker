@@ -49,6 +49,7 @@ Ah_list = []
 
 start = datetime.now()
 
+# Main loop
 while True:
     ret, frame = cap.read()
     if init_loop:
@@ -87,6 +88,7 @@ while True:
     A_list.append(None)
     Ah_list.append(None)
 
+    # Add decoded characteres to list
     if len(decoded) == 4:  # If correctly formatted
         A = decoded[0]
         Ah = decoded[2]
@@ -103,6 +105,7 @@ while True:
             except ValueError:
                 print(f'Ah={Ah} is not a float')
 
+    # Show the captured image on screen
     cv2.imshow('video', inverted_with_bb)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
