@@ -1,5 +1,6 @@
 import cv2
 import sys
+import decoding
 from decoding import decode
 from datetime import datetime
 import pickle
@@ -9,18 +10,24 @@ def do_nothing(*args):
     pass
 
 
-def update_dilations(v):
-    global dilations
-    dilations = v
-
-
 def flip_binarizing(v):
     global do_binarizing
     do_binarizing = bool(v)
 
 
+def update_dilations(v):
+    global dilations
+    dilations = v
+
+
+def update_char_dist(v):
+    # global new_character_distance
+    decoding.new_character_distance = v
+
+
 # Hyper parameters
 dilations = 4
+# new_character_distance = 60
 
 # Initialize video capture
 cap = cv2.VideoCapture(0)
@@ -39,8 +46,9 @@ cv2.createTrackbar('x_max', 'video', 169, 100, do_nothing)
 cv2.createTrackbar('y_min', 'video', 256, 100, do_nothing)
 cv2.createTrackbar('y_max', 'video', 97, 100, do_nothing)
 cv2.createTrackbar('focus', 'video', 250, 250, lambda v: cap.set(cv2.CAP_PROP_FOCUS, v))
-cv2.createTrackbar('binarize', 'video', 1, 1, flip_binarizing)
 cv2.createTrackbar('dilations', 'video', dilations, 7, update_dilations)
+cv2.createTrackbar('character_width', 'video', decoding.new_character_distance, 80, update_char_dist)
+cv2.createTrackbar('binarize', 'video', 1, 1, flip_binarizing)
 
 # Initialize arrays to store measurements
 times = []
