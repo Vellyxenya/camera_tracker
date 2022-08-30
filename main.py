@@ -41,10 +41,10 @@ init_loop = True
 
 # Create the sliders
 cv2.namedWindow('video', cv2.WINDOW_GUI_NORMAL)
-cv2.createTrackbar('x_min', 'video', 121, 100, do_nothing)
-cv2.createTrackbar('x_max', 'video', 169, 100, do_nothing)
-cv2.createTrackbar('y_min', 'video', 256, 100, do_nothing)
-cv2.createTrackbar('y_max', 'video', 97, 100, do_nothing)
+cv2.createTrackbar('x_min', 'video', 73, 100, do_nothing)
+cv2.createTrackbar('x_max', 'video', 270, 100, do_nothing)
+cv2.createTrackbar('y_min', 'video', 214, 100, do_nothing)
+cv2.createTrackbar('y_max', 'video', 85, 100, do_nothing)
 cv2.createTrackbar('focus', 'video', 250, 250, lambda v: cap.set(cv2.CAP_PROP_FOCUS, v))
 cv2.createTrackbar('dilations', 'video', dilations, 7, update_dilations)
 cv2.createTrackbar('character_width', 'video', decoding.new_character_distance, 80, update_char_dist)
