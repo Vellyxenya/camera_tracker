@@ -52,7 +52,7 @@ def regression(_list):
     return Y_prime
 
 
-def clean_series(input_list, list_name):
+def clean_series_and_plot(input_list, list_name):
     """
     Run the cleaning pipeline and plot the results
     :param input_list: the list to clean
@@ -63,7 +63,7 @@ def clean_series(input_list, list_name):
     Y_prime = regression(input_list)
 
     # Plotting
-    plt.plot(times, input_list, 'r', label='measurements')
+    plt.plot(times, input_list, 'r', label='measurements', linewidth=0.3)
     plt.plot(times, Y_prime, '--b', label='post-processed')
     plt.plot(times[-1], Y_prime[-1], color='cyan', marker='o', label=f'{round(Y_prime[-1], 3)}')
     plt.title(f'[{list_name}/sec]')
@@ -74,5 +74,5 @@ def clean_series(input_list, list_name):
     return Y_prime
 
 
-clean_series(A_list, 'A')
-clean_series(Ah_list, 'Ah')
+clean_series_and_plot(A_list, 'A')
+clean_series_and_plot(Ah_list, 'Ah')
